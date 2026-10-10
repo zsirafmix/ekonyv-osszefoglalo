@@ -495,7 +495,7 @@ function renderModeSettings(){
       break;
     case 'pollinations':
       h += field('pollModel','Modell', S.pollModel, 'text', 'openai');
-      h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten sebességkorlát van – a program automatikusan vár és újrapróbál.</div>`;
+      h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten sebességkorlát van – a program automatikusan vár és újrapróbál. Megjegyzés: <code>http://localhost</code>-ról kiszolgálva a Pollinations captcha-tokent kér (403) – https-oldalon vagy helyi fájlként megnyitva működik.</div>`;
       break;
     case 'puter':
       h += field('puterModel','Modell', S.puterModel, 'text', 'gpt-4o-mini');
@@ -558,7 +558,7 @@ async function openaiCompat(base, model, key, messages, signal, extra){
   catch(e){ if (e.name==='AbortError') throw e; throw new HttpError(0, 'Hálózati / CORS hiba: ' + e.message + ' (' + url + ')'); }
   const txt = await r.text();
   if (!r.ok){
-    let m = txt.slice(0,400); try { const j=JSON.parse(txt); m = (j.error && (j.error.message||j.error)) || j.message || m; if (typeof m!=='string') m = JSON.stringify(m); } catch(e){}
+    let m = txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,300); try { const j=JSON.parse(txt); m = (j.error && (j.error.message||j.error)) || j.message || m; if (typeof m!=='string') m = JSON.stringify(m); } catch(e){}
     throw new HttpError(r.status, 'HTTP ' + r.status + ': ' + m, parseFloat(r.headers.get('retry-after')));
   }
   let j; try { j = JSON.parse(txt); } catch(e){ throw new HttpError(502, 'Érvénytelen válasz: ' + txt.slice(0,200)); }
@@ -639,7 +639,7 @@ async function rawChat(messages, signal, maxTokens){
       const p = PRESETS[S.preset]||PRESETS.custom;
       return openaiCompat(S.apiBase||p.base, S.apiModel||p.model, S.apiKey, messages, signal, {temperature:0.3});
     }
-    case 'pollinations': return openaiCompat('https://text.pollinations.ai', S.pollModel||'openai', '', messages, signal);
+    case 'pollinations': return openaiCompat('https://text.pollinations.ai/openai', S.pollModel||'openai', '', messages, signal);
     case 'keyless': return openaiCompat(S.keylessBase||DEFAULTS.keylessBase, S.keylessModel||'openai-fast', '', messages, signal);
     case 'chrome': return chromeChat(messages, signal);
     case 'transformers': return transformersChat(messages, signal, maxTokens);
