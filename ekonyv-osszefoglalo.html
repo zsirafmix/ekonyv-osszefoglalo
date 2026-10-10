@@ -500,7 +500,7 @@ const MODES = {
 const DEFAULTS = {
   mode:'pollinations', preset:'groq', apiBase:'', apiModel:'', apiKey:'', saveKey:true,
   tfModel:'onnx-community/Qwen2.5-0.5B-Instruct', webllmModel:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
-  pollModel:'openai', puterModel:'gpt-4o-mini', keylessBase:'https://keylessai.thryx.workers.dev/v1', keylessModel:'openai-fast',
+  pollModel:'openai', pollKey:'', pollFresh:false, puterModel:'gpt-4o-mini', keylessBase:'https://keylessai.thryx.workers.dev/v1', keylessModel:'openai-fast',
   sumLen:'medium', outLang:'hu', aiChunk:0, chunkSize:15000, detectMode:'auto',
 };
 let S = Object.assign({}, DEFAULTS);
@@ -546,6 +546,8 @@ function renderModeSettings(){
       break;
     case 'pollinations':
       h += field('pollModel','Modell', S.pollModel, 'text', 'openai');
+      h += field('pollKey','Pollinations API kulcs (opcionális – enter.pollinations.ai)', S.pollKey, 'password', 'üresen: kulcs nélküli ingyenes szint');
+      h += `<label><input type="checkbox" id="pollFresh" ${S.pollFresh?'checked':''}> mindig friss válasz (a szerveroldali gyorsítótár kikerülése – több keretet fogyaszt)</label>`;
       h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten sebességkorlát van – a program automatikusan vár és újrapróbál. Megjegyzés: <code>http://localhost</code>-ról kiszolgálva a Pollinations captcha-tokent kér (403) – https-oldalon vagy helyi fájlként megnyitva működik.</div>`;
       break;
     case 'puter':
@@ -561,7 +563,7 @@ function renderModeSettings(){
   el.innerHTML = h;
   const bind = (id, key) => { const e=$(id); if(e) e.oninput = e.onchange = ()=>{ S[key] = e.type==='checkbox' ? e.checked : e.value.trim(); saveSettings(); }; };
   bind('apiBase','apiBase'); bind('apiModel','apiModel'); bind('apiKey','apiKey'); bind('saveKey','saveKey');
-  bind('tfModel','tfModel'); bind('webllmModel','webllmModel'); bind('pollModel','pollModel'); bind('puterModel','puterModel');
+  bind('tfModel','tfModel'); bind('webllmModel','webllmModel'); bind('pollModel','pollModel'); bind('pollKey','pollKey'); bind('pollFresh','pollFresh'); bind('puterModel','puterModel');
   bind('keylessBase','keylessBase'); bind('keylessModel','keylessModel');
   if ($('preset')) $('preset').onchange = ()=>{ S.preset=$('preset').value; S.apiBase=''; S.apiModel=''; saveSettings(); renderModeSettings(); };
 }
@@ -592,7 +594,7 @@ function currentChunkChars(){
   if (S.mode === 'api') return (PRESETS[S.preset]||PRESETS.custom).chunk;
   return MODES[S.mode].chunk || 8000;
 }
-const MIN_INTERVAL = {pollinations:6000, keyless:3000, api:0, puter:500, chrome:0, transformers:0, webllm:0};
+const MIN_INTERVAL = {pollinations:5000, keyless:3000, api:0, puter:500, chrome:0, transformers:0, webllm:0};
 let lastCall = 0;
 
 class HttpError extends Error { constructor(status, msg, retryAfter){ super(msg); this.status=status; this.retryAfter=retryAfter; } }
@@ -604,20 +606,44 @@ async function openaiCompat(base, model, key, messages, signal, extra){
   if (key) headers.Authorization = 'Bearer ' + key;
   if (/openrouter\.ai/.test(base)) { headers['HTTP-Referer'] = location.origin && location.origin!=='null' ? location.origin : 'https://localhost'; headers['X-Title'] = 'E-konyv osszefoglalo'; }
   const body = Object.assign({model, messages, stream:false}, extra||{});
-  let r;
+  let r; const t0 = performance.now();
   try { r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body), signal}); }
   catch(e){ if (e.name==='AbortError') throw e; throw new HttpError(0, 'Hálózati / CORS hiba: ' + e.message + ' (' + url + ')'); }
   const txt = await r.text();
+  const ms = Math.round(performance.now() - t0);
   if (!r.ok){
+    log(`← HTTP ${r.status} (${(ms/1000).toFixed(1)} mp, ${host(url)})`, 'w');
     let m = txt.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,300); try { const j=JSON.parse(txt); m = (j.error && (j.error.message||j.error)) || j.message || m; if (typeof m!=='string') m = JSON.stringify(m); } catch(e){}
     throw new HttpError(r.status, 'HTTP ' + r.status + ': ' + m, parseFloat(r.headers.get('retry-after')));
   }
-  let j; try { j = JSON.parse(txt); } catch(e){ throw new HttpError(502, 'Érvénytelen válasz: ' + txt.slice(0,200)); }
+  let j; try { j = JSON.parse(txt); } catch(e){ log(`← HTTP 200, de nem JSON (${ms} ms): ${txt.slice(0,120)}`, 'e'); throw new HttpError(502, 'A szolgáltató nem JSON választ adott (HTTP 200): ' + txt.replace(/<[^>]+>/g,' ').slice(0,200)); }
+  if (j.error || j.success === false){ const m = typeof j.error === 'string' ? j.error : (j.error && j.error.message) || JSON.stringify(j).slice(0,200); log(`← HTTP 200, de hibaüzenet: ${m}`, 'e'); throw new HttpError(503, 'A szolgáltató hibát jelzett (HTTP 200): ' + m); }
   let c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
   if (Array.isArray(c)) c = c.map(x=>x.text||'').join('');
-  c = stripThink(c);
-  if (!c) throw new HttpError(502, 'Üres válasz a modelltől');
+  c = stripAds(stripThink(c));
+  const id = j.id || '', fin = j.choices && j.choices[0] && j.choices[0].finish_reason;
+  const cached = (id && SEEN_IDS.has(id)) || ms < 1200;
+  if (id) SEEN_IDS.add(id);
+  log(`← HTTP 200 · ${(ms/1000).toFixed(1)} mp · ${host(url)} · modell: ${j.model||'?'}${j.user_tier?' ('+j.user_tier+')':''} · ${c.length} kar.${fin?' · '+fin:''}${id?' · '+id.slice(0,14):''}${cached?' · ⚡ GYORSÍTÓTÁRBÓL (azonos kérésre a szerver a korábbi választ adta vissza)':''}`, cached?'w':'o');
+  log('   „' + c.slice(0,140).replace(/\s+/g,' ') + (c.length>140?'…':'') + '”');
+  if (!c) throw new HttpError(502, 'Üres válasz a modelltől (HTTP 200, de nincs szöveg)');
+  const notice = detectNotice(c);
+  if (notice) { log('⚠️ A válasz szolgáltatói üzenetnek tűnik, nem összefoglalónak: ' + notice, 'e'); throw new HttpError(503, 'A szolgáltató üzenetet küldött összefoglaló helyett (' + notice + ')'); }
   return c;
+}
+const SEEN_IDS = new Set();
+function host(u){ try { return new URL(u).host; } catch(e){ return u; } }
+function stripAds(c){
+  return String(c||'')
+    .replace(/\n+-{3,}\s*\n+[^\n]*(?:pollinations|powered by|support our mission|sponsor|🌸\s*ad)[\s\S]*$/i,'')
+    .replace(/\n*🌸\s*Ad\s*🌸[\s\S]*$/i,'').trim();
+}
+const NOTICE_RE = /(deprecat|rate.?limit|too many requests|queue (?:is )?full|limit (?:reached|exceeded)|quota|upgrade (?:to|your)|enter\.pollinations\.ai|api key (?:is )?required|sign ?up|anonymous tier|important notice|service (?:is )?(?:temporarily )?unavailable|payment required|turnstile|captcha)/i;
+function detectNotice(c){
+  const t = String(c||'').trim();
+  if (t.length > 900) return null;            // valódi összefoglaló ennél hosszabb is lehet; rövid üzeneteket vizsgálunk
+  const m = t.match(NOTICE_RE);
+  return m ? m[0] : null;
 }
 
 let tfPipe = null, tfPipeModel = '';
@@ -690,7 +716,11 @@ async function rawChat(messages, signal, maxTokens){
       const p = PRESETS[S.preset]||PRESETS.custom;
       return openaiCompat(S.apiBase||p.base, S.apiModel||p.model, S.apiKey, messages, signal, {temperature:0.3});
     }
-    case 'pollinations': return openaiCompat('https://text.pollinations.ai/openai', S.pollModel||'openai', '', messages, signal);
+    case 'pollinations': {
+      const extra = S.pollFresh ? {seed: Math.floor(Math.random()*1e9)} : {};
+      if (S.pollKey) return openaiCompat('https://gen.pollinations.ai/v1', S.pollModel && S.pollModel!=='openai' ? S.pollModel : 'openai', S.pollKey, messages, signal, extra);
+      return openaiCompat('https://text.pollinations.ai/openai', S.pollModel||'openai', '', messages, signal, extra);
+    }
     case 'keyless': return openaiCompat(S.keylessBase||DEFAULTS.keylessBase, S.keylessModel||'openai-fast', '', messages, signal);
     case 'chrome': return chromeChat(messages, signal);
     case 'transformers': return transformersChat(messages, signal, maxTokens);
@@ -700,15 +730,23 @@ async function rawChat(messages, signal, maxTokens){
   throw new Error('Ismeretlen mód');
 }
 
-async function chat(messages, signal, maxTokens){
+let chatQueue = Promise.resolve();
+function chat(messages, signal, maxTokens){
+  const run = chatQueue.then(()=>chatInner(messages, signal, maxTokens));
+  chatQueue = run.catch(()=>{});
+  return run;
+}
+async function chatInner(messages, signal, maxTokens){
   const maxAttempts = 6;
   for (let attempt=1; ; attempt++){
     if (signal && signal.aborted) throw new DOMException('Megszakítva','AbortError');
     const wait = (MIN_INTERVAL[S.mode]||0) - (Date.now() - lastCall);
     if (wait > 0) await sleep(wait, signal);
     lastCall = Date.now();
-    try { return await rawChat(messages, signal, maxTokens); }
+    if (S.mode==='pollinations'||S.mode==='keyless'||S.mode==='api') log(`→ kérés (${attempt}. próbálkozás), ${messages.reduce((a,m)=>a+String(m.content).length,0)} kar.`);
+    try { const out = await rawChat(messages, signal, maxTokens); lastCall = Date.now(); return out; }
     catch(e){
+      lastCall = Date.now();
       if (e.name === 'AbortError') throw e;
       const st = e.status;
       const retryable = st===0 || st===429 || st===402 || st===408 || st===409 || st>=500 || /rate|limit|overload|timeout|Üres/i.test(e.message);
@@ -1052,7 +1090,7 @@ async function testConnection(){
   $('testResult').textContent = 'Tesztelés…'; busy(true); abortCtl = new AbortController();
   try {
     const t0 = Date.now();
-    const r = await chat([{role:'user', content:'Válaszolj egyetlen szóval: működik?'}], abortCtl.signal, 20);
+    const r = await chat([{role:'user', content:'Válaszolj egyetlen szóval: működik? (teszt ' + Date.now() + ')'}], abortCtl.signal, 20);
     $('testResult').textContent = `✅ OK (${((Date.now()-t0)/1000).toFixed(1)} mp): ${r.slice(0,60)}`; log('Kapcsolatteszt OK: ' + r.slice(0,80), 'o');
   } catch(e){ $('testResult').textContent = '❌ ' + e.message.slice(0,200); log('Kapcsolatteszt hiba: ' + e.message, 'e'); }
   finally { busy(false); abortCtl = null; }
