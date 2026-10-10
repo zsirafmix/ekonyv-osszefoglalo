@@ -548,7 +548,7 @@ function renderModeSettings(){
       h += field('pollModel','Modell', S.pollModel, 'text', 'openai');
       h += field('pollKey','Pollinations API kulcs (opcionális – enter.pollinations.ai)', S.pollKey, 'password', 'üresen: kulcs nélküli ingyenes szint');
       h += `<label><input type="checkbox" id="pollFresh" ${S.pollFresh?'checked':''}> mindig friss válasz (a szerveroldali gyorsítótár kikerülése – több keretet fogyaszt)</label>`;
-      h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten sebességkorlát van – a program automatikusan vár és újrapróbál. Megjegyzés: <code>http://localhost</code>-ról kiszolgálva a Pollinations captcha-tokent kér (403) – https-oldalon vagy helyi fájlként megnyitva működik.</div>`;
+      h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten kb. 15 másodpercenként 1 új generálás engedélyezett (különben HTTP 402) – a program a kéréseket sorban, szünettel küldi, és szükség esetén újrapróbál. Azonos kérésre a szerver a gyorsítótárból azonnal válaszol (a naplóban ⚡ jelzi). Megjegyzés: <code>http://localhost</code>-ról kiszolgálva a Pollinations captcha-tokent kér (403) – https-oldalon vagy helyi fájlként megnyitva működik.</div>`;
       break;
     case 'puter':
       h += field('puterModel','Modell', S.puterModel, 'text', 'gpt-4o-mini');
@@ -594,8 +594,8 @@ function currentChunkChars(){
   if (S.mode === 'api') return (PRESETS[S.preset]||PRESETS.custom).chunk;
   return MODES[S.mode].chunk || 8000;
 }
-const MIN_INTERVAL = {pollinations:5000, keyless:3000, api:0, puter:500, chrome:0, transformers:0, webllm:0};
-let lastCall = 0;
+const MIN_INTERVAL = {pollinations:15000, keyless:3000, api:0, puter:500, chrome:0, transformers:0, webllm:0};
+let lastCall = 0, lastWasCached = false;
 
 class HttpError extends Error { constructor(status, msg, retryAfter){ super(msg); this.status=status; this.retryAfter=retryAfter; } }
 
@@ -624,6 +624,7 @@ async function openaiCompat(base, model, key, messages, signal, extra){
   const id = j.id || '', fin = j.choices && j.choices[0] && j.choices[0].finish_reason;
   const cached = (id && SEEN_IDS.has(id)) || ms < 1200;
   if (id) SEEN_IDS.add(id);
+  lastWasCached = !!cached;
   log(`← HTTP 200 · ${(ms/1000).toFixed(1)} mp · ${host(url)} · modell: ${j.model||'?'}${j.user_tier?' ('+j.user_tier+')':''} · ${c.length} kar.${fin?' · '+fin:''}${id?' · '+id.slice(0,14):''}${cached?' · ⚡ GYORSÍTÓTÁRBÓL (azonos kérésre a szerver a korábbi választ adta vissza)':''}`, cached?'w':'o');
   log('   „' + c.slice(0,140).replace(/\s+/g,' ') + (c.length>140?'…':'') + '”');
   if (!c) throw new HttpError(502, 'Üres válasz a modelltől (HTTP 200, de nincs szöveg)');
@@ -740,7 +741,8 @@ async function chatInner(messages, signal, maxTokens){
   const maxAttempts = 6;
   for (let attempt=1; ; attempt++){
     if (signal && signal.aborted) throw new DOMException('Megszakítva','AbortError');
-    const wait = (MIN_INTERVAL[S.mode]||0) - (Date.now() - lastCall);
+    const wait = (lastWasCached ? 500 : (MIN_INTERVAL[S.mode]||0)) - (Date.now() - lastCall);
+    if (wait > 1500) setStatus(`Várakozás a szolgáltató sebességkorlátja miatt (${Math.ceil(wait/1000)} mp)…`);
     if (wait > 0) await sleep(wait, signal);
     lastCall = Date.now();
     if (S.mode==='pollinations'||S.mode==='keyless'||S.mode==='api') log(`→ kérés (${attempt}. próbálkozás), ${messages.reduce((a,m)=>a+String(m.content).length,0)} kar.`);
@@ -756,7 +758,8 @@ async function chatInner(messages, signal, maxTokens){
         return openaiCompat(S.apiBase||p.base, S.apiModel||p.model, S.apiKey, messages, signal);
       }
       if (fatal || !retryable || attempt >= maxAttempts){ if (st===402) e.message += ' – az ingyenes (anonim) keret átmenetileg elfogyott. Várj pár percet, vagy válts módot (pl. Groq/Gemini ingyenes kulccsal, Puter.js).'; throw e; }
-      let delay = Math.min(60000, (st===402||st===429 ? 8000 : 2000) * Math.pow(2, attempt-1)) + Math.random()*1000;
+      lastWasCached = false;
+      let delay = Math.min(60000, (st===402||st===429 ? 12000 : 2000) * Math.pow(2, attempt-1)) + Math.random()*1000;
       if (e.retryAfter > 0) delay = Math.max(delay, e.retryAfter*1000);
       log('Hiba (' + e.message.slice(0,140) + ') – újrapróbálás ' + Math.round(delay/1000) + ' mp múlva (' + attempt + '/' + (maxAttempts-1) + ')', 'w');
       await sleep(delay, signal);
