@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-könyv összefoglaló – AI elemző</title>
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="{{LOGO}}">
+<style>
+:root{
+  --bg:#060a1c;--bg2:#0b1030;--card:rgba(18,24,58,.55);--card-solid:#111736;--text:#e8ecff;--muted:#9aa6d6;--border:rgba(130,150,255,.18);
+  --cyan:#22e6ff;--violet:#8b5cf6;--magenta:#ff2bd6;--accent:#22e6ff;--accent2:#8b5cf6;
+  --ok:#2ef2a0;--warn:#ffc547;--err:#ff4d6d;--red-bg:rgba(60,6,16,.72);--red-border:#ff3b5c;--red-text:#ffd6dc;
+  --input:rgba(8,12,34,.65);--shadow:0 10px 40px rgba(0,0,0,.45);--glow:0 0 22px rgba(34,230,255,.35);
+}
+:root[data-theme="light"]{
+  --bg:#eef1ff;--bg2:#e3e8ff;--card:rgba(255,255,255,.7);--card-solid:#fff;--text:#161a33;--muted:#5a6390;--border:rgba(90,100,200,.22);
+  --cyan:#0aa6c2;--violet:#6d3fe0;--magenta:#d0189f;--accent:#0aa6c2;--accent2:#6d3fe0;
+  --ok:#0f9e65;--warn:#b07800;--err:#d62f4d;--red-bg:rgba(255,235,238,.85);--red-border:#e0284a;--red-text:#6d0d1f;
+  --input:rgba(255,255,255,.8);--shadow:0 10px 30px rgba(40,50,120,.15);--glow:0 0 18px rgba(10,166,194,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;min-height:100vh;overflow-x:hidden}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(90px);opacity:.45;pointer-events:none;animation:float 18s ease-in-out infinite alternate}
+body::before{width:520px;height:520px;background:var(--violet);top:-160px;right:-120px}
+body::after{width:460px;height:460px;background:var(--cyan);bottom:-180px;left:-140px;opacity:.28;animation-delay:-9s}
+:root[data-theme="light"] body::before,:root[data-theme="light"] body::after{opacity:.18}
+@keyframes float{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.15)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,92,.55)}50%{box-shadow:0 0 0 12px rgba(255,59,92,0)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes stripes{from{background-position:0 0}to{background-position:40px 0}}
+.wrap{max-width:1160px;margin:0 auto}
+/* HERO */
+.hero{position:relative;min-height:360px;display:flex;align-items:center;padding:34px 22px;overflow:hidden;
+  background:linear-gradient(90deg,rgba(6,10,28,.96) 0%,rgba(6,10,28,.75) 38%,rgba(6,10,28,0) 70%),url("{{HERO}}") right center/cover no-repeat;border-bottom:1px solid var(--border)}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(transparent,var(--bg))}
+.hero .wrap{position:relative;z-index:1;width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.brand{display:flex;gap:18px;align-items:center;animation:fadeUp .8s ease both}
+.brand img{width:92px;height:92px;border-radius:22px;object-fit:cover;box-shadow:0 0 30px rgba(139,92,246,.6),0 0 0 1px rgba(34,230,255,.35);animation:bob 5s ease-in-out infinite}
+.hero h1{margin:0;font-size:clamp(1.8rem,4.2vw,3rem);line-height:1.1;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(90deg,#22e6ff,#8b5cf6,#ff2bd6,#22e6ff);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 6s linear infinite;filter:drop-shadow(0 0 18px rgba(139,92,246,.45))}
+.hero p{margin:10px 0 0;color:#c9d2ff;max-width:520px;font-size:1.02rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{font-size:.78rem;padding:4px 11px;border-radius:30px;border:1px solid rgba(34,230,255,.4);color:#bff7ff;background:rgba(34,230,255,.08);backdrop-filter:blur(6px)}
+.chip.m{border-color:rgba(255,43,214,.45);color:#ffd0f4;background:rgba(255,43,214,.08)}
+.chip.v{border-color:rgba(139,92,246,.5);color:#e0d4ff;background:rgba(139,92,246,.1)}
+#themeBtn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;backdrop-filter:blur(8px)}
+:root[data-theme="light"] .hero p{color:#c9d2ff}
+/* LAYOUT */
+main.wrap{padding:6px 16px 60px;display:grid;gap:20px}
+.card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:20px 22px;box-shadow:var(--shadow);
+  backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);animation:fadeUp .7s ease both;transition:border-color .3s, box-shadow .3s, transform .3s}
+.card:hover{border-color:rgba(34,230,255,.35);box-shadow:var(--shadow),var(--glow)}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(34,230,255,.45),transparent 35%,transparent 65%,rgba(255,43,214,.4));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+main > *:nth-child(2){animation-delay:.1s}main > *:nth-child(3){animation-delay:.2s}main > *:nth-child(4){animation-delay:.3s}
+.card h2{margin:0 0 14px;font-size:1.15rem;display:flex;align-items:center;gap:10px;font-weight:700}
+.card h2 .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;font-size:.9rem;color:#06101f;background:linear-gradient(135deg,var(--cyan),var(--violet));box-shadow:0 0 14px rgba(34,230,255,.5)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}.hero{background:linear-gradient(180deg,rgba(6,10,28,.55),rgba(6,10,28,.92)),url("{{HERO}}") center/cover}}
+label{font-size:.85rem;color:var(--muted);display:block;margin:10px 0 4px}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{
+  width:100%;padding:9px 12px;border-radius:11px;border:1px solid var(--border);background:var(--input);color:var(--text);font:inherit;font-size:.93rem;transition:border-color .2s, box-shadow .2s;outline:none}
+input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,230,255,.18)}
+select option{background:var(--card-solid);color:var(--text)}
+code{font-size:.82em;background:rgba(139,92,246,.18);padding:1px 5px;border-radius:5px}
+button{font:inherit;border:0;border-radius:12px;padding:9px 16px;cursor:pointer;color:#fff;font-weight:650;font-size:.92rem;
+  background:linear-gradient(110deg,var(--cyan),var(--violet),var(--magenta),var(--cyan));background-size:250% auto;
+  box-shadow:0 4px 18px rgba(139,92,246,.35);transition:transform .15s, box-shadow .25s, background-position .6s}
+button:hover:not(:disabled){transform:translateY(-1px);background-position:100% 50%;box-shadow:0 6px 26px rgba(34,230,255,.45)}
+button:active:not(:disabled){transform:translateY(1px)}
+button.secondary{background:rgba(255,255,255,.04);color:var(--text);border:1px solid var(--border);box-shadow:none}
+button.secondary:hover:not(:disabled){border-color:var(--cyan);box-shadow:0 0 14px rgba(34,230,255,.25)}
+button.danger{background:linear-gradient(110deg,#ff4d6d,#c2185b);box-shadow:0 4px 16px rgba(255,77,109,.3)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.row > label{margin:0}
+/* DROPZONE */
+.drop{position:relative;border:1.5px dashed rgba(34,230,255,.45);border-radius:16px;min-height:220px;text-align:center;cursor:pointer;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;padding:18px;transition:.3s;
+  background:linear-gradient(180deg,rgba(6,10,28,0) 30%,rgba(6,10,28,.92) 85%),url("{{UPLOAD}}") center 30%/cover no-repeat}
+.drop:hover,.drop.over{border-color:var(--magenta);box-shadow:0 0 0 1px rgba(255,43,214,.4),0 0 30px rgba(255,43,214,.35);transform:scale(1.01)}
+.drop.over{background-size:cover,110%}
+.drop .dt{font-size:1.08rem;color:#fff}.drop .dt strong{color:var(--cyan);text-shadow:0 0 12px rgba(34,230,255,.6)}
+.drop .ds{color:#b9c3f0;font-size:.85rem}
+.muted{color:var(--muted);font-size:.86rem}
+.note{font-size:.84rem;padding:10px 12px;border-radius:12px;background:rgba(34,230,255,.07);border:1px solid rgba(34,230,255,.2);border-left:3px solid var(--cyan);margin-top:12px}
+/* MODES */
+.modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px}
+.mode{border:1px solid var(--border);border-radius:14px;padding:9px 11px;cursor:pointer;font-size:.88rem;background:var(--input);transition:.25s;font-weight:600;color:var(--text)}
+.mode:hover{border-color:rgba(139,92,246,.6);transform:translateY(-2px)}
+.mode input{display:none}
+.mode.sel{border-color:var(--cyan);background:linear-gradient(135deg,rgba(34,230,255,.16),rgba(139,92,246,.16));box-shadow:0 0 18px rgba(34,230,255,.3)}
+.mode small{display:block;color:var(--muted);font-size:.74rem;margin-top:3px;font-weight:400}
+/* CHAPTERS */
+.chapters{max-height:380px;overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--input)}
+.ch{display:flex;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:.9rem;transition:background .2s}
+.ch:hover{background:rgba(139,92,246,.1)}
+.ch:last-child{border-bottom:0}
+.ch input{accent-color:var(--cyan);width:16px;height:16px}
+.ch .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.ch .t:hover{color:var(--cyan)}
+.ch .n{color:var(--muted);font-size:.76rem;white-space:nowrap}
+.badge{display:inline-block;font-size:.72rem;padding:2px 9px;border-radius:20px;background:rgba(139,92,246,.25);color:var(--text);border:1px solid rgba(139,92,246,.4)}
+.badge.ok{background:rgba(46,242,160,.15);color:var(--ok);border-color:rgba(46,242,160,.45)}
+/* PROGRESS */
+.progress{height:12px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-top:14px}
+.progress>div{height:100%;width:0;border-radius:20px;transition:width .4s ease;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 10px,transparent 10px 20px),linear-gradient(90deg,var(--cyan),var(--violet),var(--magenta));
+  background-size:40px 100%,100% 100%;animation:stripes 1s linear infinite;box-shadow:0 0 16px rgba(34,230,255,.6)}
+#status{font-weight:650;margin-top:8px;font-size:.92rem;color:var(--cyan)}
+#log{max-height:170px;overflow:auto;font-family:ui-monospace,"JetBrains Mono",Consolas,monospace;font-size:.76rem;background:rgba(2,4,16,.6);color:#b8c4ef;border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-top:10px;white-space:pre-wrap}
+:root[data-theme="light"] #log{background:#f6f7ff;color:#333a66}
+#log:empty{display:none}
+#log .e{color:var(--err)}#log .w{color:var(--warn)}#log .o{color:var(--ok)}
+.sum{border:1px solid var(--border);border-left:3px solid var(--violet);border-radius:14px;padding:12px 16px;margin-top:12px;background:var(--input);animation:fadeUp .5s ease both}
+.sum h3{margin:0 0 6px;font-size:1rem;color:var(--cyan)}
+.sum .body{font-size:.93rem}.sum .body p{margin:.45em 0}
+/* SPOILER */
+.spoiler-card{border-color:rgba(255,59,92,.35)}
+.spoiler-card::before{background:linear-gradient(135deg,rgba(255,59,92,.6),transparent 40%,transparent 60%,rgba(255,43,214,.45))}
+.spoiler-card:hover{border-color:rgba(255,59,92,.6);box-shadow:var(--shadow),0 0 28px rgba(255,59,92,.35)}
+.sp-banner{position:relative;border-radius:16px;overflow:hidden;min-height:230px;display:flex;align-items:center;padding:22px;margin-bottom:12px;
+  background:linear-gradient(90deg,rgba(5,3,8,.15),rgba(5,3,8,.3) 45%,rgba(5,3,8,.92) 75%),url("{{SPOILER}}") left center/cover no-repeat;border:1px solid rgba(255,59,92,.3)}
+.sp-banner .sp-inner{margin-left:auto;max-width:440px;text-align:right;color:#ffe1e6}
+.sp-banner h2{justify-content:flex-end;color:#fff;font-size:1.45rem;text-shadow:0 0 18px rgba(255,59,92,.8)}
+.sp-banner p{margin:0 0 14px;color:#f3c3cb;font-size:.9rem}
+.sp-banner label{color:#f3c3cb;margin-top:10px}
+button.spoiler{background:linear-gradient(110deg,#ff2d55,#b0124d,#ff2bd6,#ff2d55);background-size:250% auto;font-size:1.05rem;padding:12px 22px;animation:pulse 2.4s infinite;box-shadow:0 0 24px rgba(255,45,85,.55)}
+@media (max-width:640px){.sp-banner{background:linear-gradient(180deg,rgba(5,3,8,.3),rgba(5,3,8,.92) 60%),url("{{SPOILER}}") center/cover}.sp-banner .sp-inner{text-align:left;margin:120px 0 0}.sp-banner h2{justify-content:flex-start}}
+.spoilerbox{border:1.5px solid var(--red-border);background:var(--red-bg);color:var(--red-text);border-radius:16px;padding:16px 18px;margin-top:12px;position:relative;overflow:hidden;
+  box-shadow:0 0 30px rgba(255,59,92,.35), inset 0 0 40px rgba(255,59,92,.12);animation:fadeUp .5s ease both}
+.spoilerbox h3{margin:0 0 8px;color:#ff6b84;text-shadow:0 0 12px rgba(255,59,92,.7)}
+.spoilerbox .hidden-content{filter:blur(10px);user-select:none;pointer-events:none;transition:filter .6s ease}
+.spoilerbox.revealed .hidden-content{filter:none;user-select:auto;pointer-events:auto}
+.spoilerbox .veil{position:absolute;inset:48px 10px 10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700;font-size:1.05rem}
+.spoilerbox.revealed .veil{display:none}
+.spoilerbox .veil span{background:linear-gradient(110deg,#ff2d55,#b0124d);color:#fff;padding:10px 20px;border-radius:30px;box-shadow:0 0 22px rgba(255,45,85,.7);animation:pulse 2s infinite}
+.hide{display:none!important}
+details summary{cursor:pointer;color:var(--muted);font-size:.88rem;margin-top:4px}
+#preview{max-height:240px;overflow:auto;white-space:pre-wrap;font-size:.82rem;background:var(--input);border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:8px}
+footer{text-align:center;color:var(--muted);font-size:.8rem;padding:14px}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:linear-gradient(var(--cyan),var(--violet));border-radius:10px}::-webkit-scrollbar-track{background:transparent}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <div>
+    <div class="brand"><img src="{{LOGO}}" alt="logó"><h1>E-könyv<br>összefoglaló</h1></div>
+    <p>Tölts fel egy PDF, EPUB vagy TXT könyvet – az AI fejezetenként összefoglalja, és ha mered, elárulja a nagy fordulatot is.</p>
+    <div class="chips"><span class="chip">📄 PDF · EPUB · TXT</span><span class="chip v">🧠 7 AI mód, kulcs nélkül is</span><span class="chip m">🔒 Böngészőben fut</span></div>
+  </div>
+  <button class="secondary" id="themeBtn" title="Téma váltása">🌓 Téma</button>
+</div></header>
+
+<main class="wrap">
+  <div class="grid2">
+    <section class="card">
+      <h2><span class="num">1</span>Könyv feltöltése</h2>
+      <div class="drop" id="drop">
+        <div class="dt"><strong>Húzd ide a könyvet</strong> vagy kattints a tallózáshoz</div>
+        <div class="ds">PDF, EPUB vagy TXT · a fájl nem töltődik fel sehová</div>
+        <input type="file" id="file" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain" class="hide">
+      </div>
+      <div id="fileInfo" class="muted" style="margin-top:8px"></div>
+      <div class="note">🔒 A fájl feldolgozása (szövegkinyerés, fejezetek felismerése) teljesen a böngésződben történik. A könyv szövege <b>csak a kiválasztott AI-szolgáltatóhoz</b> kerül el, és csak akkor, amikor összefoglalót kérsz. Helyi módokban (Chrome beépített AI, Transformers.js, WebLLM) semmi nem hagyja el a gépet.</div>
+    </section>
+
+    <section class="card">
+      <h2><span class="num">2</span>AI mód</h2>
+      <div class="modes" id="modes"></div>
+      <div id="modeSettings"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="secondary" id="testBtn">🔌 Kapcsolat tesztelése</button>
+        <span id="testResult" class="muted"></span>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2><span class="num">3</span>Fejezetek <span id="chCount" class="badge">0</span></h2>
+    <div class="row">
+      <label style="margin:0">Felismerés:</label>
+      <select id="detectMode" style="width:auto">
+        <option value="auto">Automatikus</option>
+        <option value="headings">Címsorok alapján (szövegből)</option>
+        <option value="structure">EPUB szerkezet (spine/TOC)</option>
+        <option value="chunks">Darabolás méret szerint</option>
+      </select>
+      <label style="margin:0">Darab ≈</label>
+      <input type="number" id="chunkSize" value="15000" min="2000" step="1000" style="width:110px"> <span class="muted">karakter</span>
+      <button class="secondary" id="redetectBtn">↻ Újrafelismerés</button>
+      <button class="secondary" id="selAll">Mind</button>
+      <button class="secondary" id="selNone">Egyik sem</button>
+    </div>
+    <div class="chapters" id="chapters" style="margin-top:10px"><div class="ch muted">Még nincs betöltött könyv.</div></div>
+    <details style="margin-top:8px"><summary>Előnézet (kattints egy fejezet címére)</summary><div id="preview" class="muted">–</div></details>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">4</span>Összefoglalás</h2>
+    <div class="row">
+      <label style="margin:0">Hossz:</label>
+      <select id="sumLen" style="width:auto">
+        <option value="short">Rövid (3–5 mondat)</option>
+        <option value="medium" selected>Közepes (1–2 bekezdés)</option>
+        <option value="long">Hosszú (részletes)</option>
+      </select>
+      <label style="margin:0">Nyelv:</label>
+      <select id="outLang" style="width:auto">
+        <option value="hu" selected>Magyar</option>
+        <option value="en">Angol</option>
+        <option value="book">A könyv nyelvén</option>
+      </select>
+      <label style="margin:0" title="0 = automatikus, az AI módhoz igazítva">AI-darab (kar.):</label>
+      <input type="number" id="aiChunk" value="0" min="0" step="500" style="width:100px">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="sumBtn">✨ Kijelölt fejezetek összefoglalása</button>
+      <button class="danger" id="cancelBtn" disabled>✖ Mégse</button>
+      <button class="secondary" id="copyBtn">📋 Másolás</button>
+      <button class="secondary" id="txtBtn">⬇ .txt</button>
+      <button class="secondary" id="mdBtn">⬇ .md</button>
+      <button class="secondary" id="clearBtn">🗑 Eredmények törlése</button>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div id="status">Várakozás…</div>
+    <div id="log"></div>
+    <div id="results"></div>
+  </section>
+
+  <section class="card spoiler-card">
+    <div class="sp-banner"><div class="sp-inner">
+      <h2>🔪 Spoiler zóna</h2>
+      <p>Elemzi a könyv végét (utolsó fejezetek + a kész összefoglalók), és elárulja a nagy fordulatot, illetve a gyilkost / tettest. Az eredmény elrejtve jelenik meg – csak kattintásra látható.</p>
+      <button class="spoiler" id="spoilerBtn">🕵️ Ki a gyilkos? / Fordulat</button>
+      <label><input type="checkbox" id="spoilerFull"> az előzmények gyors összefoglalása is (lassabb, pontosabb)</label>
+    </div></div>
+    <div id="spoilerOut"></div>
+  </section>
+</main>
+<footer>Minden feldolgozás a böngészőben fut. Beállítások a böngésző localStorage-ában tárolva.</footer>
+
+<script>
+"use strict";
+/*CORE-START*/
+// ---------- Pure text utilities (testable in node) ----------
+const ROMAN = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
+function romanToInt(s){
+  s = String(s).toUpperCase(); let t=0;
+  for (let i=0;i<s.length;i++){ const a=ROMAN[s[i]], b=ROMAN[s[i+1]]||0; if(!a) return NaN; t += a<b ? -a : a; }
+  return t;
+}
+const HU_ORD = 'első|második|harmadik|negyedik|ötödik|hatodik|hetedik|nyolcadik|kilencedik|tizedik|tizenegyedik|tizenkettedik|tizenharmadik|tizennegyedik|tizenötödik|tizenhatodik|tizenhetedik|tizennyolcadik|tizenkilencedik|huszadik';
+const EN_NUM = 'one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth';
+const NUM = '(?:\\d{1,3}|[IVXLCDM]{1,7})';
+const RE_KW = new RegExp(
+  '^(?:' +
+    NUM + '\\.?\\s*(?:fejezet|rész|könyv|chapter)\\b' +
+  '|(?:fejezet|chapter|rész|part|book|könyv|kapitel|capitolo|capítulo|chapitre)\\s+(?:' + NUM + '|' + EN_NUM + '|' + HU_ORD + ')\\b' +
+  '|(?:' + HU_ORD + ')\\s+(?:fejezet|rész|könyv)\\b' +
+  ')', 'iu');
+const RE_SPECIAL = /^(?:prológus|prolog|prologue|epilógus|epilog|epilogue|előszó|utószó|bevezetés|foreword|preface|afterword|zárszó)\b\.?\s*$/iu;
+const RE_ROMAN = /^([IVXLCDM]{1,7})\.?$/;
+const RE_ARABIC = /^(\d{1,3})\.?$/;
+const RE_NUMTITLE = /^(\d{1,3}|[IVXLCDM]{1,7})\.\s+([^\s].{0,60})$/u;
+
+function normalizeText(t){
+  return String(t).replace(/\r\n?/g,'\n').replace(/\u00ad/g,'').replace(/[ \t\u00a0]+/g,' ')
+    .replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function chunkBySize(text, maxChars){
+  maxChars = Math.max(500, maxChars|0);
+  const out=[]; if(!text) return out;
+  const paras = text.split(/\n\s*\n/);
+  let cur='';
+  const pushCur=()=>{ if(cur.trim()) out.push(cur.trim()); cur=''; };
+  for (let p of paras){
+    if (p.length > maxChars){
+      pushCur();
+      const sents = p.match(/[^.!?…]+[.!?…]+["'”»)]*\s*|[^.!?…]+$/g) || [p];
+      for (let s of sents){
+        while (s.length > maxChars){ if(cur) pushCur(); out.push(s.slice(0,maxChars)); s = s.slice(maxChars); }
+        if ((cur+s).length > maxChars) pushCur();
+        cur += s;
+      }
+      pushCur();
+      continue;
+    }
+    if ((cur.length + p.length + 2) > maxChars) pushCur();
+    cur += (cur ? '\n\n' : '') + p;
+  }
+  pushCur();
+  return out;
+}
+
+function classifyLine(line, prevBlank){
+  const l = line.trim();
+  if (!l || l.length > 80) return null;
+  if (RE_SPECIAL.test(l)) return {cls:'special'};
+  if (RE_KW.test(l)) return {cls:'kw'};
+  if (!prevBlank) return null;
+  let m;
+  if ((m = l.match(RE_ROMAN)) && !isNaN(romanToInt(m[1]))) return {cls:'roman', n:romanToInt(m[1])};
+  if ((m = l.match(RE_ARABIC))) return {cls:'arabic', n:parseInt(m[1],10)};
+  if ((m = l.match(RE_NUMTITLE)) && !/[.,;:]$/.test(m[2])) { const n=/^\d/.test(m[1])?parseInt(m[1],10):romanToInt(m[1]); if(!isNaN(n)) return {cls:'numtitle', n}; }
+  return null;
+}
+
+function mostlyIncreasing(nums){
+  if (nums.length < 3) return false;
+  let inc=0; for (let i=1;i<nums.length;i++) if (nums[i] === nums[i-1]+1) inc++;
+  return inc / (nums.length-1) >= 0.6;
+}
+
+function detectChapters(text, opts){
+  opts = Object.assign({minBody:400, chunkChars:15000, mode:'auto'}, opts||{});
+  text = normalizeText(text);
+  if (opts.mode === 'chunks') return chunkChapters(text, opts.chunkChars);
+  const lines = text.split('\n');
+  const offs = []; let o=0;
+  for (const ln of lines){ offs.push(o); o += ln.length + 1; }
+  const cands = [];
+  for (let i=0;i<lines.length;i++){
+    const prevBlank = i===0 || lines[i-1].trim()==='';
+    const c = classifyLine(lines[i], prevBlank);
+    if (c) cands.push(Object.assign({i, off:offs[i], line:lines[i].trim()}, c));
+  }
+  const by = cls => cands.filter(c=>c.cls===cls);
+  let chosen = null;
+  const order = [
+    ['kw', a=>a.length>=2],
+    ['roman', a=>a.length>=3 && mostlyIncreasing(a.map(x=>x.n))],
+    ['arabic', a=>a.length>=3 && mostlyIncreasing(a.map(x=>x.n))],
+    ['numtitle', a=>a.length>=3 && mostlyIncreasing(a.map(x=>x.n))],
+  ];
+  for (const [cls, ok] of order){ const a = by(cls); if (ok(a)) { chosen = cls; break; } }
+  if (!chosen) return chunkChapters(text, opts.chunkChars);
+  let heads = cands.filter(c => c.cls===chosen || c.cls==='special').sort((a,b)=>a.off-b.off);
+  // Build segments, absorbing headings with tiny bodies (e.g. table of contents lines)
+  const build = hs => hs.map((h,k)=>{
+    const end = k+1<hs.length ? hs[k+1].off : text.length;
+    return {h, body: text.slice(h.off + h.line.length, end).trim()};
+  });
+  let changed = true, guard = 0;
+  while (changed && guard++ < 50){
+    changed = false;
+    const segs = build(heads);
+    const keep = segs.filter((s,k)=> s.body.length >= opts.minBody || (k===segs.length-1 && s.body.length>50));
+    if (keep.length !== heads.length){ heads = keep.map(s=>s.h); changed = true; }
+  }
+  if (heads.length < 2) return chunkChapters(text, opts.chunkChars);
+  const segs = build(heads);
+  const chapters = [];
+  const pre = text.slice(0, heads[0].off).trim();
+  if (pre.length >= opts.minBody) chapters.push({title:'Eleje / bevezető rész', text:pre});
+  for (const s of segs){
+    let title = s.h.line, body = s.body;
+    // subtitle: next short non-sentence line
+    const m = body.match(/^([^\n]{2,70})\n/);
+    if (m && !/[.!?,;:]$/.test(m[1].trim()) && !RE_KW.test(m[1]) && (s.h.cls==='roman'||s.h.cls==='arabic'||s.h.cls==='kw')) {
+      title += ' – ' + m[1].trim(); body = body.slice(m[0].length).trim();
+    }
+    chapters.push({title, text: body});
+  }
+  return chapters;
+}
+
+function chunkChapters(text, size){
+  return chunkBySize(normalizeText(text), size || 15000).map((t,i)=>({title:'Rész ' + (i+1), text:t, auto:true}));
+}
+
+function stripThink(s){
+  return String(s||'').replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/^\s*<think>[\s\S]*$/i,'').trim();
+}
+/*CORE-END*/
+
+// ---------- DOM helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function mdToHtml(md){
+  const lines = esc(md).split('\n'); let html='', inList=false;
+  for (let l of lines){
+    l = l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>').replace(/^#{1,6}\s*(.*)$/,'<b>$1</b>');
+    const li = l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)$/);
+    if (li){ if(!inList){html+='<ul>';inList=true;} html+='<li>'+li[1]+'</li>'; continue; }
+    if (inList){ html+='</ul>'; inList=false; }
+    if (l.trim()) html += '<p>'+l+'</p>';
+  }
+  if (inList) html+='</ul>';
+  return html;
+}
+function log(msg, cls){
+  const d = document.createElement('div'); if (cls) d.className = cls;
+  d.textContent = '[' + new Date().toLocaleTimeString('hu-HU') + '] ' + msg;
+  $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
+}
+function setStatus(s){ $('status').textContent = s; }
+function setProgress(p){ $('bar').style.width = Math.max(0,Math.min(100,p)) + '%'; }
+const sleep = (ms, signal) => new Promise((res, rej)=>{
+  const t = setTimeout(res, ms);
+  if (signal) signal.addEventListener('abort', ()=>{ clearTimeout(t); rej(new DOMException('Megszakítva','AbortError')); }, {once:true});
+});
+function loadScript(src){
+  return new Promise((res, rej)=>{
+    if ([...document.scripts].some(s=>s.src===src)) return res();
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = ()=>rej(new Error('Nem sikerült betölteni: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// ---------- Theme ----------
+(function(){
+  const t = localStorage.getItem('ek_theme'); if (t) document.documentElement.dataset.theme = t;
+  $('themeBtn').onclick = ()=>{
+    const cur = document.documentElement.dataset.theme || 'dark';
+    const n = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = n; localStorage.setItem('ek_theme', n);
+  };
+})();
+
+// ---------- Settings ----------
+const PRESETS = {
+  openai:     {name:'OpenAI', base:'https://api.openai.com/v1', model:'gpt-4o-mini', chunk:24000, key:true},
+  groq:       {name:'Groq (ingyenes kulcs)', base:'https://api.groq.com/openai/v1', model:'llama-3.1-8b-instant', chunk:12000, key:true},
+  openrouter: {name:'OpenRouter', base:'https://openrouter.ai/api/v1', model:'meta-llama/llama-3.3-70b-instruct:free', chunk:20000, key:true},
+  gemini:     {name:'Google Gemini (ingyenes kulcs)', base:'https://generativelanguage.googleapis.com/v1beta/openai', model:'gemini-2.5-flash', chunk:40000, key:true},
+  mistral:    {name:'Mistral (ingyenes kulcs)', base:'https://api.mistral.ai/v1', model:'mistral-small-latest', chunk:24000, key:true},
+  cerebras:   {name:'Cerebras (ingyenes kulcs)', base:'https://api.cerebras.ai/v1', model:'llama3.1-8b', chunk:14000, key:true},
+  hf:         {name:'Hugging Face Router (ingyenes token)', base:'https://router.huggingface.co/v1', model:'meta-llama/Llama-3.1-8B-Instruct', chunk:12000, key:true},
+  lmstudio:   {name:'LM Studio (helyi)', base:'http://localhost:1234/v1', model:'local-model', chunk:8000, key:false},
+  ollama:     {name:'Ollama (helyi)', base:'http://localhost:11434/v1', model:'llama3.2', chunk:6000, key:false},
+  custom:     {name:'Egyéni (OpenAI-kompatibilis)', base:'', model:'', chunk:12000, key:false},
+};
+const MODES = {
+  api:          {label:'🔑 API kulcsos', desc:'OpenAI, Groq, OpenRouter, Gemini, Mistral, Cerebras, HF, LM Studio, Ollama…'},
+  chrome:       {label:'🧩 Chrome beépített AI', desc:'Gemini Nano a böngészőben, offline', chunk:3500},
+  transformers: {label:'🤗 Transformers.js', desc:'Helyi modell, letöltés után offline', chunk:2500},
+  webllm:       {label:'⚡ WebLLM (WebGPU)', desc:'Nagyobb helyi modell, WebGPU kell', chunk:5000},
+  pollinations: {label:'🌸 Pollinations AI', desc:'Kulcs nélkül, ingyenes', chunk:12000},
+  puter:        {label:'☁️ Puter.js', desc:'Kulcs nélkül, „user pays” (Puter fiók)', chunk:30000},
+  keyless:      {label:'🗝️ KeylessAI', desc:'Kulcs nélküli OpenAI-kompatibilis proxy', chunk:12000},
+};
+const DEFAULTS = {
+  mode:'pollinations', preset:'groq', apiBase:'', apiModel:'', apiKey:'', saveKey:true,
+  tfModel:'onnx-community/Qwen2.5-0.5B-Instruct', webllmModel:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+  pollModel:'openai', puterModel:'gpt-4o-mini', keylessBase:'https://keylessai.thryx.workers.dev/v1', keylessModel:'openai-fast',
+  sumLen:'medium', outLang:'hu', aiChunk:0, chunkSize:15000, detectMode:'auto',
+};
+let S = Object.assign({}, DEFAULTS);
+try { Object.assign(S, JSON.parse(localStorage.getItem('ek_settings')||'{}')); } catch(e){}
+function saveSettings(){
+  const copy = Object.assign({}, S); if (!S.saveKey) copy.apiKey = '';
+  localStorage.setItem('ek_settings', JSON.stringify(copy));
+}
+
+function renderModes(){
+  $('modes').innerHTML = Object.entries(MODES).map(([k,m])=>
+    `<label class="mode ${S.mode===k?'sel':''}"><input type="radio" name="mode" value="${k}" ${S.mode===k?'checked':''}>${m.label}<small>${m.desc}</small></label>`).join('');
+  document.querySelectorAll('input[name=mode]').forEach(r=>r.onchange=()=>{ S.mode=r.value; saveSettings(); renderModes(); });
+  renderModeSettings();
+}
+function field(id, label, val, type='text', ph=''){
+  return `<label for="${id}">${label}</label><input type="${type}" id="${id}" value="${esc(val||'')}" placeholder="${esc(ph)}">`;
+}
+function renderModeSettings(){
+  const el = $('modeSettings'); let h='';
+  switch (S.mode){
+    case 'api': {
+      const p = PRESETS[S.preset] || PRESETS.custom;
+      h += `<label for="preset">Szolgáltató</label><select id="preset">${Object.entries(PRESETS).map(([k,v])=>`<option value="${k}" ${k===S.preset?'selected':''}>${v.name}</option>`).join('')}</select>`;
+      h += field('apiBase','Base URL', S.apiBase || p.base, 'url', 'https://…/v1');
+      h += field('apiModel','Modell', S.apiModel || p.model, 'text', 'modell neve');
+      h += field('apiKey','API kulcs', S.apiKey, 'password', p.key ? 'sk-…' : '(helyi szervernél nem kell)');
+      h += `<label><input type="checkbox" id="saveKey" ${S.saveKey?'checked':''}> kulcs mentése ebben a böngészőben (localStorage)</label>`;
+      if (S.preset==='lmstudio'||S.preset==='ollama') h += `<div class="note">Helyi szerver: LM Studio-ban kapcsold be a <b>CORS</b>-t (Developer → Settings → Enable CORS); Ollama-nál indítsd így: <code>OLLAMA_ORIGINS=* ollama serve</code>. https-oldalról a böngésző engedélyt kérhet a helyi hálózathoz – ha nem megy, nyisd meg a HTML-t helyi fájlként.</div>`;
+      else h += `<div class="note">A kulcs csak a böngésződben marad, és közvetlenül a szolgáltatónak megy. Ingyenes kulcs: Groq, Gemini (aistudio.google.com), Mistral, Cerebras, OpenRouter (:free modellek), Hugging Face.</div>`;
+      break; }
+    case 'chrome':
+      h += `<div class="note">Chrome 138+ asztali böngésző kell (a Prompt API / <code>LanguageModel</code>). Ha nem elérhető: <code>chrome://flags/#prompt-api-for-gemini-nano</code> és <code>#optimization-guide-on-device-model</code> → Enabled, majd újraindítás. Első használatkor a modell (~2–4 GB) letöltődik. Kis kontextus, ezért a szöveget kis darabokban dolgozza fel.</div><div id="chromeAvail" class="muted" style="margin-top:6px"></div>`;
+      setTimeout(checkChrome, 0); break;
+    case 'transformers':
+      h += field('tfModel','Modell (Hugging Face ONNX, text-generation)', S.tfModel);
+      h += `<div class="muted">Ajánlott: <code>onnx-community/Qwen2.5-0.5B-Instruct</code> (~0,5 GB, többnyelvű). Erősebb gépen: <code>onnx-community/Qwen2.5-1.5B-Instruct</code>.</div>`;
+      h += `<div class="note">A modell első alkalommal letöltődik és a böngésző gyorsítótárában marad, utána offline is megy. ${navigator.gpu?'WebGPU elérhető ✅':'WebGPU nem elérhető – WASM (CPU) mód, lassabb.'} Kis modell: az összefoglalók egyszerűbbek lesznek.</div>`;
+      break;
+    case 'webllm':
+      h += `<label for="webllmModel">Modell</label><select id="webllmModel">${['Qwen2.5-1.5B-Instruct-q4f16_1-MLC','Qwen2.5-3B-Instruct-q4f16_1-MLC','Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama-3.2-3B-Instruct-q4f16_1-MLC','Phi-3.5-mini-instruct-q4f16_1-MLC','gemma-2-2b-it-q4f16_1-MLC'].map(m=>`<option ${m===S.webllmModel?'selected':''}>${m}</option>`).join('')}</select>`;
+      h += `<div class="note">${navigator.gpu?'WebGPU elérhető ✅':'⚠️ Ebben a böngészőben nincs WebGPU – ez a mód nem fog működni (próbáld Chrome/Edge asztali verzióval).'} A modell (1–2 GB) első alkalommal letöltődik, utána gyorsítótárból fut, offline.</div>`;
+      break;
+    case 'pollinations':
+      h += field('pollModel','Modell', S.pollModel, 'text', 'openai');
+      h += `<div class="note">Kulcs nélkül, ingyenes: <code>https://text.pollinations.ai/openai</code>. Anonim szinten sebességkorlát van – a program automatikusan vár és újrapróbál.</div>`;
+      break;
+    case 'puter':
+      h += field('puterModel','Modell', S.puterModel, 'text', 'gpt-4o-mini');
+      h += `<div class="note">A Puter.js „user pays” modell: első híváskor bejelentkező/regisztráló ablak nyílik (ingyenes Puter-fiók), a költséget a felhasználó Puter-kerete fedezi. Előugró ablakokat engedélyezd.</div>`;
+      break;
+    case 'keyless':
+      h += field('keylessBase','Proxy base URL (OpenAI-kompatibilis)', S.keylessBase, 'url');
+      h += field('keylessModel','Modell', S.keylessModel, 'text', 'openai-fast');
+      h += `<div class="note">KeylessAI (github.com/lordbasilaiassistant-sudo/keylessai): ingyenes, kulcs nélküli OpenAI-kompatibilis proxy, amely nyilvános végpontokra (főleg Pollinations) továbbít. Közösségi szolgáltatás, elérhetősége nem garantált – ha nem válaszol, használd a Pollinations módot, vagy adj meg más kulcs nélküli proxy-URL-t.</div>`;
+      break;
+  }
+  el.innerHTML = h;
+  const bind = (id, key) => { const e=$(id); if(e) e.oninput = e.onchange = ()=>{ S[key] = e.type==='checkbox' ? e.checked : e.value.trim(); saveSettings(); }; };
+  bind('apiBase','apiBase'); bind('apiModel','apiModel'); bind('apiKey','apiKey'); bind('saveKey','saveKey');
+  bind('tfModel','tfModel'); bind('webllmModel','webllmModel'); bind('pollModel','pollModel'); bind('puterModel','puterModel');
+  bind('keylessBase','keylessBase'); bind('keylessModel','keylessModel');
+  if ($('preset')) $('preset').onchange = ()=>{ S.preset=$('preset').value; S.apiBase=''; S.apiModel=''; saveSettings(); renderModeSettings(); };
+}
+
+// ---------- AI backends ----------
+function getLM(){ return globalThis.LanguageModel || (window.ai && window.ai.languageModel) || null; }
+async function chromeAvailability(){
+  const LM = getLM(); if (!LM) return 'missing';
+  try {
+    if (LM.availability) return await LM.availability();
+    if (LM.capabilities){ const c = await LM.capabilities(); return c.available === 'readily' ? 'available' : c.available === 'after-download' ? 'downloadable' : 'unavailable'; }
+  } catch(e){ return 'error: ' + e.message; }
+  return 'unknown';
+}
+async function checkChrome(){
+  const el = $('chromeAvail'); if (!el) return;
+  const a = await chromeAvailability();
+  const map = {missing:'❌ A LanguageModel API nem érhető el ebben a böngészőben (Chrome 138+ asztali, vagy flag-ek bekapcsolása kell).',
+    unavailable:'❌ Az eszköz nem támogatja a beépített modellt (hardver/tárhely követelmények).',
+    downloadable:'⬇️ Elérhető, de a modellt még le kell tölteni (első hívásnál indul).',
+    downloading:'⏳ A modell letöltése folyamatban…', available:'✅ Elérhető, használatra kész.'};
+  el.textContent = map[a] || ('Állapot: ' + a);
+}
+
+function currentChunkChars(){
+  const ov = parseInt($('aiChunk').value,10);
+  if (ov > 0) return ov;
+  if (S.mode === 'api') return (PRESETS[S.preset]||PRESETS.custom).chunk;
+  return MODES[S.mode].chunk || 8000;
+}
+const MIN_INTERVAL = {pollinations:3000, keyless:3000, api:0, puter:500, chrome:0, transformers:0, webllm:0};
+let lastCall = 0;
+
+class HttpError extends Error { constructor(status, msg, retryAfter){ super(msg); this.status=status; this.retryAfter=retryAfter; } }
+
+async function openaiCompat(base, model, key, messages, signal, extra){
+  if (!base) throw new Error('Nincs megadva Base URL.');
+  const url = base.replace(/\/+$/,'') + '/chat/completions';
+  const headers = {'Content-Type':'application/json'};
+  if (key) headers.Authorization = 'Bearer ' + key;
+  if (/openrouter\.ai/.test(base)) { headers['HTTP-Referer'] = location.origin && location.origin!=='null' ? location.origin : 'https://localhost'; headers['X-Title'] = 'E-konyv osszefoglalo'; }
+  const body = Object.assign({model, messages, stream:false}, extra||{});
+  let r;
+  try { r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body), signal}); }
+  catch(e){ if (e.name==='AbortError') throw e; throw new HttpError(0, 'Hálózati / CORS hiba: ' + e.message + ' (' + url + ')'); }
+  const txt = await r.text();
+  if (!r.ok){
+    let m = txt.slice(0,400); try { const j=JSON.parse(txt); m = (j.error && (j.error.message||j.error)) || j.message || m; if (typeof m!=='string') m = JSON.stringify(m); } catch(e){}
+    throw new HttpError(r.status, 'HTTP ' + r.status + ': ' + m, parseFloat(r.headers.get('retry-after')));
+  }
+  let j; try { j = JSON.parse(txt); } catch(e){ throw new HttpError(502, 'Érvénytelen válasz: ' + txt.slice(0,200)); }
+  let c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+  if (Array.isArray(c)) c = c.map(x=>x.text||'').join('');
+  c = stripThink(c);
+  if (!c) throw new HttpError(502, 'Üres válasz a modelltől');
+  return c;
+}
+
+let tfPipe = null, tfPipeModel = '';
+async function transformersChat(messages, signal, maxTokens){
+  if (!tfPipe || tfPipeModel !== S.tfModel){
+    log('Transformers.js betöltése…');
+    const T = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6');
+    const files = {};
+    const progress_callback = p => {
+      if (p.status === 'progress' && p.file){ files[p.file] = p.progress||0; const v = Object.values(files); setStatus('Modell letöltése: ' + Math.round(v.reduce((a,b)=>a+b,0)/v.length) + '%'); }
+    };
+    let device = 'wasm', dtype = 'q4';
+    if (navigator.gpu){ try { const a = await navigator.gpu.requestAdapter(); if (a){ device='webgpu'; dtype='q4f16'; } } catch(e){} }
+    try { tfPipe = await T.pipeline('text-generation', S.tfModel, {device, dtype, progress_callback}); }
+    catch(e){
+      if (device==='webgpu'){ log('WebGPU hiba, váltás WASM-ra: ' + e.message, 'w'); tfPipe = await T.pipeline('text-generation', S.tfModel, {device:'wasm', dtype:'q4', progress_callback}); device='wasm'; }
+      else throw e;
+    }
+    tfPipeModel = S.tfModel; log('Modell kész (' + device + ').', 'o');
+  }
+  if (signal && signal.aborted) throw new DOMException('Megszakítva','AbortError');
+  const out = await tfPipe(messages, {max_new_tokens: maxTokens || 400, do_sample:false, repetition_penalty:1.1});
+  const g = out[0].generated_text;
+  return stripThink(Array.isArray(g) ? g[g.length-1].content : String(g));
+}
+
+let webllmEngine = null, webllmModelLoaded = '';
+async function webllmChat(messages, signal, maxTokens){
+  if (!navigator.gpu) throw new Error('A WebLLM-hez WebGPU kell, ez a böngésző nem támogatja.');
+  if (!webllmEngine || webllmModelLoaded !== S.webllmModel){
+    log('WebLLM betöltése…');
+    const W = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm');
+    webllmEngine = await W.CreateMLCEngine(S.webllmModel, {initProgressCallback: r => setStatus('WebLLM: ' + r.text)});
+    webllmModelLoaded = S.webllmModel; log('WebLLM modell kész.', 'o');
+  }
+  if (signal && signal.aborted) throw new DOMException('Megszakítva','AbortError');
+  const r = await webllmEngine.chat.completions.create({messages, temperature:0.3, max_tokens: maxTokens || 800});
+  return stripThink(r.choices[0].message.content);
+}
+
+async function chromeChat(messages, signal){
+  const LM = getLM(); if (!LM) throw new Error('A Chrome beépített AI (LanguageModel) nem érhető el ebben a böngészőben.');
+  const a = await chromeAvailability();
+  if (a === 'unavailable') throw new Error('A beépített modell ezen az eszközön nem érhető el.');
+  const sys = messages.filter(m=>m.role==='system').map(m=>m.content).join('\n');
+  const user = messages.filter(m=>m.role!=='system').map(m=>m.content).join('\n\n');
+  const opts = {signal, monitor(m){ m.addEventListener('downloadprogress', e=> setStatus('Gemini Nano letöltése: ' + Math.round((e.loaded||0)*100) + '%')); }};
+  if (sys) opts.initialPrompts = [{role:'system', content:sys}];
+  let session;
+  try { session = await LM.create(opts); }
+  catch(e){ if (sys){ delete opts.initialPrompts; opts.systemPrompt = sys; session = await LM.create(opts); } else throw e; }
+  try { return stripThink(await session.prompt(user, {signal})); }
+  finally { try { session.destroy(); } catch(e){} }
+}
+
+async function puterChat(messages){
+  if (!window.puter) { log('Puter.js betöltése…'); await loadScript('https://js.puter.com/v2/'); }
+  const r = await puter.ai.chat(messages, {model: S.puterModel || 'gpt-4o-mini'});
+  let c = r && r.message ? r.message.content : r;
+  if (Array.isArray(c)) c = c.map(x=>x.text||'').join('');
+  if (typeof c !== 'string') c = r && r.toString ? r.toString() : JSON.stringify(r);
+  c = stripThink(c);
+  if (!c) throw new HttpError(502, 'Üres válasz (Puter)');
+  return c;
+}
+
+async function rawChat(messages, signal, maxTokens){
+  switch (S.mode){
+    case 'api': {
+      const p = PRESETS[S.preset]||PRESETS.custom;
+      return openaiCompat(S.apiBase||p.base, S.apiModel||p.model, S.apiKey, messages, signal, {temperature:0.3});
+    }
+    case 'pollinations': return openaiCompat('https://text.pollinations.ai', S.pollModel||'openai', '', messages, signal);
+    case 'keyless': return openaiCompat(S.keylessBase||DEFAULTS.keylessBase, S.keylessModel||'openai-fast', '', messages, signal);
+    case 'chrome': return chromeChat(messages, signal);
+    case 'transformers': return transformersChat(messages, signal, maxTokens);
+    case 'webllm': return webllmChat(messages, signal, maxTokens);
+    case 'puter': return puterChat(messages);
+  }
+  throw new Error('Ismeretlen mód');
+}
+
+async function chat(messages, signal, maxTokens){
+  const maxAttempts = 6;
+  for (let attempt=1; ; attempt++){
+    if (signal && signal.aborted) throw new DOMException('Megszakítva','AbortError');
+    const wait = (MIN_INTERVAL[S.mode]||0) - (Date.now() - lastCall);
+    if (wait > 0) await sleep(wait, signal);
+    lastCall = Date.now();
+    try { return await rawChat(messages, signal, maxTokens); }
+    catch(e){
+      if (e.name === 'AbortError') throw e;
+      const st = e.status;
+      const retryable = st===0 || st===429 || st===408 || st===409 || st>=500 || /rate|limit|overload|timeout|Üres/i.test(e.message);
+      const fatal = st===401 || st===403 || st===404 || (st===400 && !/temperature/i.test(e.message));
+      if (st===400 && /temperature/i.test(e.message) && S.mode==='api'){ // some reasoning models reject temperature
+        const p = PRESETS[S.preset]||PRESETS.custom;
+        return openaiCompat(S.apiBase||p.base, S.apiModel||p.model, S.apiKey, messages, signal);
+      }
+      if (fatal || !retryable || attempt >= maxAttempts) throw e;
+      let delay = Math.min(60000, 2000 * Math.pow(2, attempt-1)) + Math.random()*1000;
+      if (e.retryAfter > 0) delay = Math.max(delay, e.retryAfter*1000);
+      log('Hiba (' + e.message.slice(0,140) + ') – újrapróbálás ' + Math.round(delay/1000) + ' mp múlva (' + attempt + '/' + (maxAttempts-1) + ')', 'w');
+      await sleep(delay, signal);
+    }
+  }
+}
+
+// ---------- Prompts ----------
+const LEN = {
+  short: {txt:'3–5 mondatban', tokens:300},
+  medium:{txt:'1–2 bekezdésben (kb. 150–250 szó)', tokens:700},
+  long:  {txt:'részletesen, 4–6 bekezdésben (kb. 400–600 szó), a fontos szereplők és események kiemelésével', tokens:1400},
+};
+function langInstr(){
+  const v = $('outLang').value;
+  return v==='hu' ? 'Magyarul válaszolj.' : v==='en' ? 'Answer in English.' : 'A könyv saját nyelvén válaszolj.';
+}
+function sysPrompt(){ return 'Tapasztalt irodalmi szerkesztő vagy, aki pontos, tárgyszerű összefoglalókat ír könyvfejezetekről. Csak a megadott szövegre támaszkodj, ne találj ki eseményeket. ' + langInstr(); }
+
+async function summarizeText(title, text, len, ctx){
+  const max = currentChunkChars();
+  const L = LEN[len];
+  if (text.length <= max){
+    ctx.step();
+    return chat([{role:'system', content:sysPrompt()},
+      {role:'user', content:`Foglald össze a(z) „${title}” című fejezetet ${L.txt}. Ne írj bevezető mondatot, rögtön az összefoglalóval kezdj.\n\n--- SZÖVEG ---\n${text}\n--- VÉGE ---`}], ctx.signal, L.tokens);
+  }
+  // map
+  const chunks = chunkBySize(text, max);
+  ctx.addSteps(chunks.length);
+  log(`„${title}”: túl hosszú (${text.length} kar.), ${chunks.length} darabban (map-reduce).`);
+  const notes = [];
+  for (let i=0;i<chunks.length;i++){
+    setStatus(`„${title}” – ${i+1}/${chunks.length}. darab`);
+    ctx.step();
+    notes.push(await chat([{role:'system', content:sysPrompt()},
+      {role:'user', content:`Ez a(z) „${title}” fejezet ${i+1}/${chunks.length}. része. Írj róla tömör, pontokba szedett jegyzetet a fontos eseményekről és szereplőkről (max. 8 pont).\n\n--- SZÖVEG ---\n${chunks[i]}\n--- VÉGE ---`}], ctx.signal, 500));
+  }
+  return reduceNotes(title, notes, len, ctx);
+}
+async function reduceNotes(title, notes, len, ctx){
+  const max = currentChunkChars();
+  let joined = notes.map((n,i)=>`[${i+1}. rész]\n${n}`).join('\n\n');
+  if (joined.length > max && notes.length > 1){
+    const groups = chunkBySize(joined, max);
+    ctx.addSteps(groups.length);
+    const merged = [];
+    for (const g of groups){ ctx.step(); merged.push(await chat([{role:'system',content:sysPrompt()},{role:'user',content:`Sűrítsd egyetlen tömör jegyzetté ezeket a részjegyzeteket (a(z) „${title}” fejezetből), az időrendet megtartva:\n\n${g}`}], ctx.signal, 600)); }
+    return reduceNotes(title, merged, len, ctx);
+  }
+  ctx.step();
+  return chat([{role:'system', content:sysPrompt()},
+    {role:'user', content:`Az alábbi, időrendben következő jegyzetek a(z) „${title}” fejezet részeiről szólnak. Ezek alapján írj egységes összefoglalót a teljes fejezetről ${LEN[len].txt}. Ne említsd a jegyzeteket, rögtön az összefoglalóval kezdj.\n\n${joined}`}], ctx.signal, LEN[len].tokens);
+}
+
+// ---------- Book state ----------
+let book = null; // {name, type, text, structChapters}
+let chapters = [];
+const summaries = new Map(); // index -> {title, text, len}
+let abortCtl = null;
+
+function renderChapters(){
+  $('chCount').textContent = chapters.length;
+  if (!chapters.length){ $('chapters').innerHTML = '<div class="ch muted">Nincs fejezet.</div>'; return; }
+  $('chapters').innerHTML = chapters.map((c,i)=>`<div class="ch"><input type="checkbox" data-i="${i}" ${c.sel!==false?'checked':''}><span class="t" data-p="${i}" title="${esc(c.title)}">${i+1}. ${esc(c.title)}</span>${summaries.has(i)?'<span class="badge ok">kész</span>':''}<span class="n">${c.text.length.toLocaleString('hu-HU')} kar.</span></div>`).join('');
+  $('chapters').querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{ chapters[+cb.dataset.i].sel = cb.checked; });
+  $('chapters').querySelectorAll('.t').forEach(t=>t.onclick=()=>{ const c=chapters[+t.dataset.p]; $('preview').textContent = c.text.slice(0,3000) + (c.text.length>3000?'\n…':''); $('preview').parentElement.open = true; });
+}
+function runDetection(){
+  if (!book) return;
+  const mode = $('detectMode').value, size = parseInt($('chunkSize').value,10)||15000;
+  S.detectMode = mode; S.chunkSize = size; saveSettings();
+  let res;
+  if ((mode==='structure' || mode==='auto') && book.structChapters && book.structChapters.length >= 2){
+    res = book.structChapters.map(c=>({title:c.title, text:c.text}));
+    if (mode==='auto'){ // if spine is one big file, try headings
+      const big = res.some(c=>c.text.length > 120000);
+      if (big){ const h = detectChapters(book.text, {chunkChars:size}); if (h.length > res.length && !h[0].auto) res = h; }
+    }
+  } else {
+    if (mode==='structure') log('Nincs EPUB-szerkezet, címsor-alapú felismerés.', 'w');
+    res = detectChapters(book.text, {chunkChars:size, mode: mode==='chunks'?'chunks':'auto'});
+  }
+  chapters = res; summaries.clear(); renderChapters(); renderResults();
+  const auto = res.length && res[0].auto;
+  log(`${res.length} fejezet ${auto?'(darabolással – nem találtam fejezetcímeket)':'felismerve'}.`, 'o');
+}
+
+// ---------- Parsers ----------
+async function parsePdf(buf){
+  setStatus('PDF betöltése (pdf.js)…');
+  const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  const doc = await pdfjs.getDocument({data: buf}).promise;
+  const pages = [];
+  for (let p=1; p<=doc.numPages; p++){
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    let s = '', lastY = null;
+    for (const it of tc.items){
+      if (it.str === undefined) continue;
+      const y = it.transform ? it.transform[5] : null;
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && !s.endsWith('\n')) s += '\n';
+      s += it.str; if (it.hasEOL) s += '\n';
+      lastY = y;
+    }
+    let lines = s.split('\n');
+    // drop page-number lines at page edges
+    while (lines.length && /^\s*\d{1,4}\s*$/.test(lines[lines.length-1])) lines.pop();
+    while (lines.length && /^\s*\d{1,4}\s*$/.test(lines[0]) && lines.length>1 && lines[1].trim()==='' ) lines.shift();
+    pages.push(lines.join('\n'));
+    if (p % 10 === 0 || p === doc.numPages){ setProgress(p/doc.numPages*100); setStatus(`PDF oldalak: ${p}/${doc.numPages}`); }
+  }
+  // join hyphenated line breaks, keep paragraph structure
+  let text = pages.join('\n\n').replace(/(\p{L})-\n(\p{Ll})/gu, '$1$2');
+  return {text};
+}
+
+function htmlToText(html){
+  let doc = new DOMParser().parseFromString(html, 'application/xhtml+xml');
+  if (doc.getElementsByTagName('parsererror').length) doc = new DOMParser().parseFromString(html, 'text/html');
+  const body = doc.body || doc.getElementsByTagName('body')[0] || doc.documentElement;
+  const out = [];
+  const BLOCK = /^(p|div|h[1-6]|li|br|tr|blockquote|section|article|pre|hr|dt|dd)$/i;
+  (function walk(n){
+    for (const c of n.childNodes){
+      if (c.nodeType === 3) out.push(c.nodeValue.replace(/\s+/g,' '));
+      else if (c.nodeType === 1){
+        const tag = c.localName || c.nodeName;
+        if (/^(script|style|head)$/i.test(tag)) continue;
+        if (BLOCK.test(tag)) out.push('\n\n');
+        walk(c);
+        if (BLOCK.test(tag)) out.push('\n\n');
+      }
+    }
+  })(body);
+  const heading = (doc.querySelector && (doc.querySelector('h1,h2,h3')||null));
+  const title = doc.querySelector && doc.querySelector('title');
+  return {text: normalizeText(out.join('')), heading: heading ? heading.textContent.trim().replace(/\s+/g,' ') : '', title: title ? title.textContent.trim() : ''};
+}
+
+async function parseEpub(buf){
+  setStatus('EPUB kicsomagolása (JSZip)…');
+  if (!window.JSZip) await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+  const zip = await JSZip.loadAsync(buf);
+  const readFile = async p => { const f = zip.file(p) || zip.file(decodeURIComponent(p)); if (!f) throw new Error('Hiányzó fájl az EPUB-ban: ' + p); return f.async('string'); };
+  const xml = s => new DOMParser().parseFromString(s, 'application/xml');
+  const container = xml(await readFile('META-INF/container.xml'));
+  const rf = container.getElementsByTagName('rootfile')[0];
+  if (!rf) throw new Error('Érvénytelen EPUB (nincs rootfile).');
+  const opfPath = rf.getAttribute('full-path');
+  const baseDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')+1) : '';
+  const resolve = (base, href) => { const parts = (base + href).split('/'); const st=[]; for (const p of parts){ if (p==='..') st.pop(); else if (p!=='.') st.push(p);} return st.join('/'); };
+  const opf = xml(await readFile(opfPath));
+  const manifest = {}; let navHref = null, ncxHref = null;
+  for (const it of opf.getElementsByTagName('item')){
+    const id = it.getAttribute('id'), href = it.getAttribute('href'), mt = it.getAttribute('media-type')||'';
+    manifest[id] = {href: resolve(baseDir, href.split('#')[0]), mt};
+    if ((it.getAttribute('properties')||'').split(/\s+/).includes('nav')) navHref = manifest[id].href;
+    if (mt === 'application/x-dtbncx+xml') ncxHref = manifest[id].href;
+  }
+  const spineEl = opf.getElementsByTagName('spine')[0];
+  if (!ncxHref && spineEl && spineEl.getAttribute('toc') && manifest[spineEl.getAttribute('toc')]) ncxHref = manifest[spineEl.getAttribute('toc')].href;
+  const titleEl = opf.getElementsByTagName('dc:title')[0] || opf.getElementsByTagNameNS('*','title')[0];
+  // TOC map: file -> title (first entry wins)
+  const toc = {};
+  try {
+    if (navHref){
+      const nd = new DOMParser().parseFromString(await readFile(navHref), 'application/xhtml+xml');
+      const navDir = navHref.includes('/') ? navHref.slice(0, navHref.lastIndexOf('/')+1) : '';
+      for (const a of nd.getElementsByTagName('a')){ const h = a.getAttribute('href'); if (!h) continue; const f = resolve(navDir, h.split('#')[0]); if (!toc[f]) toc[f] = a.textContent.trim().replace(/\s+/g,' '); }
+    } else if (ncxHref){
+      const nd = xml(await readFile(ncxHref));
+      const ncxDir = ncxHref.includes('/') ? ncxHref.slice(0, ncxHref.lastIndexOf('/')+1) : '';
+      for (const np of nd.getElementsByTagName('navPoint')){
+        const lab = np.getElementsByTagName('text')[0], ct = np.getElementsByTagName('content')[0];
+        if (lab && ct){ const f = resolve(ncxDir, (ct.getAttribute('src')||'').split('#')[0]); if (!toc[f]) toc[f] = lab.textContent.trim(); }
+      }
+    }
+  } catch(e){ log('TOC olvasási hiba: ' + e.message, 'w'); }
+  const refs = spineEl ? [...spineEl.getElementsByTagName('itemref')].map(r=>manifest[r.getAttribute('idref')]).filter(Boolean) : [];
+  const struct = []; const all = [];
+  for (let i=0;i<refs.length;i++){
+    const it = refs[i];
+    if (!/html|xml/.test(it.mt)) continue;
+    let r; try { r = htmlToText(await readFile(it.href)); } catch(e){ log(e.message,'w'); continue; }
+    setProgress((i+1)/refs.length*100); setStatus(`EPUB fejezetek: ${i+1}/${refs.length}`);
+    if (r.text.length < 120) continue; // covers, blank pages
+    const title = toc[it.href] || r.heading || (r.title && r.title.length < 80 ? r.title : '') || ('Szakasz ' + (struct.length+1));
+    struct.push({title, text:r.text}); all.push(r.text);
+  }
+  return {text: all.join('\n\n'), structChapters: struct, title: titleEl ? titleEl.textContent.trim() : ''};
+}
+
+async function decodeTxt(buf){
+  let t = new TextDecoder('utf-8').decode(buf);
+  if ((t.match(/\uFFFD/g)||[]).length > 20){ try { t = new TextDecoder('windows-1250').decode(buf); log('Kódolás: windows-1250', 'w'); } catch(e){} }
+  return {text: t.replace(/^\uFEFF/,'')};
+}
+
+async function handleFile(f){
+  if (!f) return;
+  const ext = (f.name.split('.').pop()||'').toLowerCase();
+  $('fileInfo').textContent = `${f.name} – ${(f.size/1024/1024).toFixed(2)} MB – feldolgozás…`;
+  $('log').innerHTML=''; setProgress(0);
+  try {
+    const buf = await f.arrayBuffer();
+    let r;
+    if (ext === 'pdf' || f.type === 'application/pdf') r = await parsePdf(buf);
+    else if (ext === 'epub') r = await parseEpub(buf);
+    else if (ext === 'txt' || f.type.startsWith('text/')) r = await decodeTxt(buf);
+    else throw new Error('Nem támogatott formátum: ' + ext);
+    if (!r.text || r.text.trim().length < 50) throw new Error('Nem sikerült szöveget kinyerni (szkennelt PDF? akkor OCR kellene).');
+    book = {name: f.name.replace(/\.[^.]+$/,''), type: ext, text: normalizeText(r.text), structChapters: r.structChapters||null, title: r.title||''};
+    $('fileInfo').textContent = `✅ ${f.name} – ${book.text.length.toLocaleString('hu-HU')} karakter${book.title?' – „'+book.title+'”':''}`;
+    log(`Betöltve: ${f.name} (${ext.toUpperCase()}), ${book.text.length} karakter.`, 'o');
+    setProgress(100); setStatus('Könyv betöltve.');
+    runDetection();
+  } catch(e){
+    console.error(e); $('fileInfo').textContent = '❌ ' + e.message; log('Hiba: ' + e.message, 'e'); setStatus('Hiba a betöltéskor.');
+  }
+}
+
+// ---------- Results & export ----------
+function renderResults(){
+  const items = [...summaries.entries()].sort((a,b)=>a[0]-b[0]);
+  $('results').innerHTML = items.map(([i,s])=>`<div class="sum"><h3>${i+1}. ${esc(s.title)}</h3><div class="body">${mdToHtml(s.text)}</div></div>`).join('');
+}
+function exportText(md){
+  const items = [...summaries.entries()].sort((a,b)=>a[0]-b[0]);
+  if (!items.length) return '';
+  const head = (book && (book.title || book.name)) || 'Könyv';
+  let out = md ? `# ${head} – fejezet-összefoglalók\n\n` : `${head} – fejezet-összefoglalók\n${'='.repeat(40)}\n\n`;
+  for (const [i,s] of items) out += md ? `## ${i+1}. ${s.title}\n\n${s.text}\n\n` : `${i+1}. ${s.title}\n${'-'.repeat(30)}\n${s.text.replace(/\*\*/g,'')}\n\n`;
+  if (lastSpoiler) out += md ? `## ⚠️ SPOILER – Fordulat / tettes\n\n${lastSpoiler}\n` : `SPOILER – Fordulat / tettes\n${'-'.repeat(30)}\n${lastSpoiler.replace(/\*\*/g,'')}\n`;
+  return out;
+}
+function download(name, content, type){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], {type})); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// ---------- Jobs ----------
+function makeCtx(total){
+  let done = 0, tot = Math.max(1,total);
+  return { signal: abortCtl.signal, step(){ done++; setProgress(Math.min(99, (done-0.5)/tot*100)); }, addSteps(n){ tot += n; }, finish(){ setProgress(100); } };
+}
+function busy(on){
+  $('sumBtn').disabled = on; $('spoilerBtn').disabled = on; $('cancelBtn').disabled = !on; $('testBtn').disabled = on; $('redetectBtn').disabled = on;
+}
+async function runSummaries(){
+  if (!chapters.length) return alert('Előbb tölts fel egy könyvet.');
+  const sel = chapters.map((c,i)=>i).filter(i=>chapters[i].sel!==false);
+  if (!sel.length) return alert('Jelölj ki legalább egy fejezetet.');
+  S.sumLen = $('sumLen').value; S.outLang = $('outLang').value; saveSettings();
+  abortCtl = new AbortController(); busy(true);
+  const ctx = makeCtx(sel.length); const len = $('sumLen').value;
+  log(`Összefoglalás indul: ${sel.length} fejezet, mód: ${MODES[S.mode].label}, darabméret: ${currentChunkChars()} kar.`);
+  let ok = 0;
+  try {
+    for (const i of sel){
+      const c = chapters[i];
+      setStatus(`Összefoglalás: ${i+1}. „${c.title}”`);
+      try {
+        const s = await summarizeText(c.title, c.text, len, ctx);
+        summaries.set(i, {title:c.title, text:s, len}); ok++;
+        renderResults(); renderChapters();
+        log(`Kész: ${i+1}. ${c.title}`, 'o');
+      } catch(e){
+        if (e.name === 'AbortError') throw e;
+        log(`Hiba a(z) ${i+1}. fejezetnél: ${e.message}`, 'e');
+        if (e.status===401||e.status===403||e.status===404||e.status===0||/nem érhető el|WebGPU/.test(e.message)) throw e;
+      }
+    }
+    ctx.finish(); setStatus(`Kész: ${ok}/${sel.length} fejezet összefoglalva.`);
+  } catch(e){
+    if (e.name === 'AbortError'){ setStatus('Megszakítva.'); log('Megszakítva a felhasználó által.', 'w'); }
+    else { setStatus('Hiba: ' + e.message); log('Leállt: ' + e.message, 'e'); }
+  } finally { busy(false); abortCtl = null; }
+}
+
+let lastSpoiler = '';
+async function runSpoiler(){
+  if (!chapters.length) return alert('Előbb tölts fel egy könyvet.');
+  abortCtl = new AbortController(); busy(true);
+  const max = currentChunkChars();
+  const ctx = makeCtx(3);
+  $('spoilerOut').innerHTML = '';
+  try {
+    // 1) earlier context
+    if ($('spoilerFull').checked){
+      const todo = chapters.map((c,i)=>i).filter(i=>!summaries.has(i));
+      ctx.addSteps(todo.length);
+      for (const i of todo){ setStatus(`Előzmények: ${i+1}/${chapters.length}`); summaries.set(i, {title:chapters[i].title, text: await summarizeText(chapters[i].title, chapters[i].text, 'short', ctx), len:'short'}); renderResults(); renderChapters(); }
+    }
+    // 2) ending text: last chapters up to ~2.5 chunks or last 20%
+    const budget = Math.max(max*2.5, Math.min(book.text.length*0.2, max*6));
+    const endIdx = []; let acc = 0;
+    for (let i=chapters.length-1; i>=0 && acc < budget; i--){ endIdx.unshift(i); acc += chapters[i].text.length; }
+    let ending = endIdx.map(i=>`### ${chapters[i].title}\n${chapters[i].text}`).join('\n\n');
+    if (ending.length > budget) ending = ending.slice(ending.length - budget);
+    log(`Spoiler-elemzés: utolsó ${endIdx.length} fejezet (${ending.length} kar.) + ${summaries.size} összefoglaló.`);
+    const sys = 'Irodalmi elemző vagy. Feladatod a könyv nagy fordulatának és (krimi esetén) a gyilkos/tettes azonosítása a megadott szöveg alapján. Ha nincs gyilkosság, mondd meg, és a fő fordulatot / végkifejletet írd le. Ne találgass bizonyíték nélkül; ha bizonytalan vagy, jelezd. ' + langInstr();
+    // 3) map ending chunks to clue notes
+    const parts = chunkBySize(ending, max);
+    ctx.addSteps(parts.length);
+    const notes = [];
+    for (let k=0;k<parts.length;k++){
+      setStatus(`A befejezés elemzése: ${k+1}/${parts.length}`); ctx.step();
+      notes.push(await chat([{role:'system',content:sys},{role:'user',content:`Ez a könyv befejező részének ${k+1}/${parts.length}. darabja. Jegyzeteld pontokban: leleplezések, ki a tettes/gyilkos (ha kiderül), indíték, fordulatok, a szereplők sorsa a végén.\n\n--- SZÖVEG ---\n${parts[k]}\n--- VÉGE ---`}], abortCtl.signal, 600));
+    }
+    // 4) final
+    let prev = [...summaries.entries()].sort((a,b)=>a[0]-b[0]).map(([i,s])=>`${i+1}. ${s.title}: ${s.text}`).join('\n');
+    const room = Math.max(1500, max - notes.join('\n').length - 1500);
+    if (prev.length > room) prev = prev.slice(0, room) + '\n…';
+    setStatus('Végső spoiler-összegzés…'); ctx.step();
+    const ans = await chat([{role:'system',content:sys},{role:'user',content:
+      `${prev ? 'A korábbi fejezetek összefoglalói:\n' + prev + '\n\n' : ''}A befejezés jegyzetei:\n${notes.map((n,i)=>`[${i+1}]\n${n}`).join('\n\n')}\n\nVálaszolj ebben a formában:\n**Gyilkos / tettes:** (név, vagy „nincs gyilkosság”)\n**Indíték:** …\n**A nagy fordulat:** 2–4 mondat\n**Hogyan derül ki:** 1–3 mondat\n**Végkifejlet:** 1–3 mondat`}], abortCtl.signal, 800);
+    lastSpoiler = ans;
+    $('spoilerOut').innerHTML = `<div class="spoilerbox" id="spbox"><h3>⚠️ SPOILER – a könyv vége</h3><div class="hidden-content">${mdToHtml(ans)}</div><div class="veil"><span>👁 Kattints a felfedéshez</span></div></div>`;
+    $('spbox').onclick = ()=> $('spbox').classList.add('revealed');
+    ctx.finish(); setStatus('Spoiler kész – kattints a piros dobozra a felfedéshez.'); log('Spoiler-elemzés kész.', 'o');
+  } catch(e){
+    if (e.name === 'AbortError'){ setStatus('Megszakítva.'); log('Megszakítva.', 'w'); }
+    else { setStatus('Hiba: ' + e.message); log('Spoiler hiba: ' + e.message, 'e'); }
+  } finally { busy(false); abortCtl = null; }
+}
+
+async function testConnection(){
+  $('testResult').textContent = 'Tesztelés…'; busy(true); abortCtl = new AbortController();
+  try {
+    const t0 = Date.now();
+    const r = await chat([{role:'user', content:'Válaszolj egyetlen szóval: működik?'}], abortCtl.signal, 20);
+    $('testResult').textContent = `✅ OK (${((Date.now()-t0)/1000).toFixed(1)} mp): ${r.slice(0,60)}`; log('Kapcsolatteszt OK: ' + r.slice(0,80), 'o');
+  } catch(e){ $('testResult').textContent = '❌ ' + e.message.slice(0,200); log('Kapcsolatteszt hiba: ' + e.message, 'e'); }
+  finally { busy(false); abortCtl = null; }
+}
+
+// ---------- Wire up ----------
+const drop = $('drop');
+drop.onclick = ()=> $('file').click();
+$('file').onchange = e => handleFile(e.target.files[0]);
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e=> handleFile(e.dataTransfer.files[0]));
+window.addEventListener('dragover', e=>e.preventDefault()); window.addEventListener('drop', e=>e.preventDefault());
+$('redetectBtn').onclick = runDetection;
+$('detectMode').onchange = runDetection;
+$('selAll').onclick = ()=>{ chapters.forEach(c=>c.sel=true); renderChapters(); };
+$('selNone').onclick = ()=>{ chapters.forEach(c=>c.sel=false); renderChapters(); };
+$('sumBtn').onclick = runSummaries;
+$('spoilerBtn').onclick = runSpoiler;
+$('cancelBtn').onclick = ()=>{ if (abortCtl) abortCtl.abort(); };
+$('testBtn').onclick = testConnection;
+$('clearBtn').onclick = ()=>{ summaries.clear(); lastSpoiler=''; $('spoilerOut').innerHTML=''; renderResults(); renderChapters(); };
+$('copyBtn').onclick = async ()=>{ const t = exportText(true); if (!t) return alert('Még nincs összefoglaló.'); try { await navigator.clipboard.writeText(t); setStatus('Vágólapra másolva.'); } catch(e){ alert('Másolás nem sikerült: ' + e.message); } };
+$('txtBtn').onclick = ()=>{ const t = exportText(false); if (!t) return alert('Még nincs összefoglaló.'); download((book?book.name:'konyv') + '-osszefoglalo.txt', t, 'text/plain;charset=utf-8'); };
+$('mdBtn').onclick = ()=>{ const t = exportText(true); if (!t) return alert('Még nincs összefoglaló.'); download((book?book.name:'konyv') + '-osszefoglalo.md', t, 'text/markdown;charset=utf-8'); };
+$('sumLen').value = S.sumLen; $('outLang').value = S.outLang; $('aiChunk').value = S.aiChunk||0; $('chunkSize').value = S.chunkSize||15000; $('detectMode').value = S.detectMode||'auto';
+$('aiChunk').onchange = ()=>{ S.aiChunk = parseInt($('aiChunk').value,10)||0; saveSettings(); };
+renderModes();
+if (location.protocol === 'file:') log('Helyi fájlként futsz. Puter.js és a Chrome beépített AI https-en (vagy localhoston) működik a legjobban.', 'w');
+</script>
+</body>
+</html>
